@@ -43,8 +43,9 @@ def create_assistant(client, file_id):
     and a     modern bathroom with an Italian shower. It boasts a private garden, cave, and 
     parking rental     options. Perfect for families, located near public transport and 
     schools. Energy and gas     ratings not conducted.
-    Neighborhood: Quartier Prado - République.
     URL:<a href="https://www.orpi.com/annonce-vente-appartement-t3-cannes-06400-251-050223-362/?agency=mchimmobilier></a>
+    Neighborhood: Quartier Prado - République.
+    
     
     (Continue in the same format for the remaining listings)
     """,
@@ -102,18 +103,24 @@ def print_messages(client, thread_id):
 
 # main function to excute all the functions above and run the assistant
 def main():
+    print("Initializing OpenAI client...")
     client = initialize_openai_client()
+    print("Uploading file to OpenAI...")
     file_id = upload_file(client, "DBTest-AssistantAI.json")
+    print("Creating assistant...")
     assistant = create_assistant(client, file_id)
 
     while True:
         user_input = input("Enter your query (type 'exit' to end): ")
         if user_input.lower() == "exit":
+            print("Exiting the assistant. Goodbye!")
             break
 
+        print("Running assistant... Please wait for the response.")
         thread_id, run_id = run_assistant(client, assistant.id, user_input)
         run_status = wait_for_run_completion(client, thread_id, run_id)
         if run_status.status == "completed":
+            print("Assistant response received:")
             print_messages(client, thread_id)
         else:
             print("Run failed:", run_status.last_error)
