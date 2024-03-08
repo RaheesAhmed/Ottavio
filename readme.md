@@ -16,6 +16,18 @@ This Python script creates a conversational AI assistant using OpenAI's API. The
 
 Download VS Code or Editor of your choice
 
+### Clone the Reposotry
+
+```
+git clone https://github.com/RaheesAhmed/Ottavio.git
+```
+
+Go to the Folder
+
+```
+cd ottavio
+```
+
 ### create virtual Environment for python
 
 ```
