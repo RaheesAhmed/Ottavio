@@ -1,4 +1,16 @@
-# Openai Assistant Api & Openai Embedding
+# Real Estate Assistant AI
+
+This Python script creates a conversational AI assistant using OpenAI's API. The assistant is designed to provide comprehensive summaries of real estate listings based on user queries.
+
+## Features
+
+- Initializes the OpenAI client with API key.
+- Creates an assistant with specific instructions for real estate listings.
+- Uploads a file to OpenAI and returns the file ID.
+- Runs the assistant and returns the thread ID and run ID.
+- Waits for the run to be completed and returns the run status.
+- Prints the messages from the thread.
+- Allows users to chat with the assistant until they type 'exit'.
 
 ## Installation
 
@@ -22,6 +34,18 @@ venv/scripts/Activate
 pip install -r requirments.txt
 ```
 
+Create a .env file in the root directory of your project and add your OpenAI API key:
+
+```
+OPENAI_API_KEY=your_api_key_here
+```
+
+add JSON file named DB Test Assistant AI(1) with the data for the real estate listings.
+
+```
+file_id = upload_file(client, "DB Test Assistant AI(1)")
+```
+
 ### Run the Code
 
 To Run Assistant API Type
@@ -30,10 +54,16 @@ To Run Assistant API Type
 python assistantapi.py
 ```
 
-### Replace the file name
+Enter your queries when prompted, and the assistant will provide summaries of real estate listings based on your input. Type 'exit' to end the conversation.
 
-you can chnage or replace the file name here the file you want to sent to the assistant
+Example Query:Enter your query (type 'exit' to end): I'm looking for a flat in Cannes around 400000€
+
+### you can also change the assistant instructions:
 
 ```
-file_id = upload_file(client, "DB Test Assistant AI(1)")
+def create_assistant(client, file_id):
+    assistant = client.beta.assistants.create(
+        name="Ottavio",
+        instructions=f"""add your instruction here"""
+
 ```
