@@ -1,6 +1,3 @@
-langchain
 openai
-flask
-flask_cors
 python-dotenv
 
