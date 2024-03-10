@@ -1,6 +1,7 @@
 from openai import OpenAI
 import time
 from dotenv import load_dotenv
+import json
 
 
 # Initializes the OpenAI client using the API key from the .env file.
@@ -11,29 +12,47 @@ def initialize_openai_client():
     return client
 
 
+def read_json_file():
+    with open("DBTest-AssistantAI.json", "r", encoding="utf-8") as json_file:
+        data = json.load(json_file)
+    return data
+
+
 # Creates an assistant with the specified file_id and returns the assistant object.
 def create_assistant(client, file_id):
     assistant = client.beta.assistants.create(
         name="Ottavio",
-        instructions=f"""As a virtual real estate agent specializing in properties in Cannes, your task is to assist users in finding the perfect property within a specified budget. When a user provides you with a budget, you are to present them with a selection of properties priced within their stated budget to a maximum of 20% above it. For instance, for a 100,000€ budget, you should offer properties ranging from 100,000€ to 120,000€ exclusively. 
+        instructions=f"""En tant qu'agent immobilier virtuel, votre mission est d'accompagner nos clients dans leur recherche de bien immobilier à acheter. Lorsqu'un client partage avec vous un emplacement préféré et un budget, vous plongez dans le dossier fourni pour trouver une sélection de biens qui répondent le mieux à ses attentes. Accédez à la liste des propriétés à partir du fichier fourni. Voici comment procéder :
 
-Expected Output: Provide a concise summary for each property listing that falls within the specified price range. The summary should include:
-- Property type, size, and location
-- Price
-- Key features: number of bedrooms, bathrooms, and any special amenities
-- A highlight from the review section that underscores what makes the property unique or appealing
-- Energy and gas emission ratings, when available
-- The specific neighborhood in Cannes the property is located
+Comprendre la demande : Prendre en compte le budget indiqué par le client et se concentrer sur les biens dont les prix se situent strictement dans cette fourchette budgétaire jusqu'à 20% au-dessus, afin de proposer des options variées et réalistes.
 
-If certain details are unavailable, clearly state so. Ensure that the information is presented clearly and concisely, maintaining a consistent format for ease of comparison. 
+Sélection des biens : S'assurer que chaque bien proposé répond aux critères de recherche du client, notamment en termes de localisation et de budget.
 
-Example Output:
-Appartement à vendre - 3 pièces  62 m2 in Cannes (330,000 €)
-This charming apartment in the city center features 2 bedrooms, a spacious living room, and a modern bathroom with an Italian shower. It boasts a private garden, cave, and parking rental options. Perfect for families, located near public transport and schools. Energy and gas ratings not conducted. 
-Neighborhood: Quartier Prado - République.
-URL: <a href="https://www.orpi.com/annonce-vente-appartement-t3-cannes-06400-251-050223-362/?agency=mchimmobilier"></a>
+Présentation des options : Pour chaque propriété sélectionnée, fournissez une liste comprenant les informations suivantes :
 
-    (Continue in the same format for the remaining listings)
+ajouter un titre
+Prix ​​de vente
+Superficie en m²
+Un bref résumé des principales caractéristiques et atouts du bien
+Lien vers l'annonce complète sur le Web
+Exemple de format de réponse : Pour une demande précise, comme par exemple un appartement à Cannes avec un budget de 300 000 €, veillez à présenter plusieurs options répondant à ces critères, en veillant à varier les choix proposés en termes de caractéristiques et de prix, sans dépasser la limite. de 20% au-dessus du budget.
+
+Exemple de demande client :
+"Je recherche un appartement à Cannes avec un budget de 300 000 €."
+
+Exemple de réponse optimisée :
+
+Appartement 3 pièces à vendre - 330 000 € - 62 m² : Situé au centre ville de Cannes, cet appartement offre 2 chambres, un spacieux séjour, une salle de bain moderne avec douche à l'italienne, jardin commun, possibilité de location cave et parking. Idéal pour une famille, proche des transports et des écoles.
+URL : ajoutez l'URL ici
+
+Vente appartement 4 pièces - 349 800 € - 82 m² : Dans le quartier de la Croix des Gardes, découvrez cet appartement de 4 chambres, situé au dernier étage, offrant une terrasse avec vue mer et verdure. A proximité des commerces, écoles et plages. Parking et cave inclus.
+URL : ajoutez l'URL ici
+
+Vente appartement 3 pièces - 315 000 € - 69 m² : Profitez de la vue mer depuis cet appartement en dernier étage, avec ascenseur. Composé de 2 chambres, un salon, une salle à manger, cuisine indépendante, terrasse et balcon. Garage et cave inclus.
+URL : ajoutez l'URL ici
+
+Cette version améliorée met l'accent sur la clarté des instructions et la structure de la réponse, tout en garantissant une réponse précise à la demande du client.
+Vous pouvez trouver la liste des propriétés en suivant les commandes :read_json_file(file_path)
     """,
         tools=[{"type": "retrieval"}, {"type": "code_interpreter"}],
         model="gpt-4-1106-preview",

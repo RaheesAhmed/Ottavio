@@ -6,3 +6,5 @@ DBTest-AssistantAI.json
 openai-embading.py
 DB Test Assistant AI(1).json
 prompt.py
+/persist
+test.py
