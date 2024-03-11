@@ -79,3 +79,11 @@ def create_assistant(client, file_id):
         instructions=f"""add your instruction here"""
 
 ```
+
+# Run the filter data
+
+```
+python filter_data.py
+```
+
+Enter the price range
