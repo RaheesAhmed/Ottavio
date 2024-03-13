@@ -1,56 +1,89 @@
-import json
+import pandas as pd
 
 
-# Load the dataset from a JSON file
 def load_data(filepath):
-    with open(filepath, "r", encoding="utf-8") as file:
-        return json.load(file)
+    # Load the dataset from an Excel file
+    try:
+        return pd.read_excel(filepath)
+    except Exception as e:
+        print(f"Failed to load data: {e}")
+        return None
 
 
-# Filter properties based on the specified criteria
-def filter_properties(data, max_price, property_type="Appartement"):
-    budget_increase = max_price * 1.2
-    filtered = []
-    for property in data:
-        price = int(
-            property["Prix"].replace(" €", "").replace(" ", "").replace(",", "")
-        )
-        if property["Type de bien"] == property_type and price <= budget_increase:
-            filtered.append(property)
+def filter_properties(
+    data, budget, property_type="Appartement", min_size=None, amenities=[]
+):
+    # Filter properties based on the specified criteria including budget range, property type, size, and amenities.
+    max_price = budget * 1.2
+    # Filter by type and price range
+    filtered = data[
+        (data["Type de bien"] == property_type)
+        & (data["Prix"] >= budget)
+        & (data["Prix"] <= max_price)
+    ]
+
+    # Filter by size if specified
+    if min_size is not None:
+        filtered = filtered[
+            filtered.get("Essentiels", pd.Series(index=filtered.index, dtype=float))
+            >= min_size
+        ]
+
+    # Filter by amenities if any specified
+    if amenities:
+        for amenity in amenities:
+            if amenity in filtered.columns:
+                filtered = filtered[filtered[amenity] == True]
+            else:
+                print(f"Warning: Amenity '{amenity}' not found in dataset.")
+
     return filtered
 
 
-# Format the filtered properties into a string response
-def format_response(properties, max_price):
-    budget_increase = max_price * 1.2
-    response = f"Properties up to {max_price} € (including up to 20% above budget: {budget_increase} €):\n"
-    for i, property in enumerate(properties, start=1):
-        price = property["Prix"].replace(" €", "").replace(" ", "").replace(",", "")
-        response += (
-            f"{i}. {property['Titre annonce']} - {price} € - URL: {property['URL']}\n"
-        )
+def format_response(properties):
+    # Format the filtered properties into a readable string.
+    if properties.empty:
+        return "No properties found within the specified criteria."
+
+    response = "Shortlisted Properties:\n"
+    for i, property in properties.iterrows():
+        response += f"{i+1}. {property['Titre annonce']} - {property['Prix']} € - URL: {property['URL']}\n"
+        if "Essentiels" in properties.columns:
+            response += f" - Essentiels: {property.get('Essentiels', 'N/A')} sqm"
+        response += "\n"
     return response
 
 
-# Usage
 if __name__ == "__main__":
-    filepath = "DBTest-AssistantAI.json"  # Adjust with the correct path
+    filepath = "Flat range search.xlsx"  # Path to the dataset/File
     data = load_data(filepath)
 
-    while True:
-        user_input = input(
-            "Enter property price range e.g., 400000 or type 'exit' to quit: "
-        )
-        if user_input.lower() == "exit":
-            print("Exiting the program. Goodbye!")
-            break
-
+    if data is not None:
         try:
-            max_price = int(
-                user_input.replace(",", "")
-            )  # Removes commas for conversion
-            filtered_properties = filter_properties(data, max_price)
-            response = format_response(filtered_properties, max_price)
+            budget = int(input("Enter your budget (e.g., 400000): "))
+            min_size = input(
+                "Enter minimum property size in sqm (optional, press enter to skip): "
+            )
+            min_size = int(min_size) if min_size.isdigit() else None
+            amenities_input = input(
+                "Enter required amenities separated by comma (optional, press enter to skip): "
+            )
+            amenities = (
+                [amenity.strip() for amenity in amenities_input.split(",")]
+                if amenities_input
+                else []
+            )
+
+            filtered_properties = filter_properties(
+                data, budget, min_size=min_size, amenities=amenities
+            )
+            response = format_response(
+                filtered_properties.head(3)
+            )  # Limit to top 3 properties
             print(response)
         except ValueError:
-            print("Please enter a valid number or 'exit' to quit.")
+            print("Please enter valid numerical values.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    else:
+        print("Exiting due to data loading error.")
