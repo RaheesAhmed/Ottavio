@@ -140,51 +140,60 @@ def main():
     print("Initializing OpenAI client...")
     client = initialize_openai_client()
     print("Creating assistant...")
-    # fileId = upload_file(client, "Flat range search.xlsx")
     assistant = create_assistant(client)
     filepath = "Flat range search.xlsx"  # Path to the dataset/File
     data = load_data(filepath)
+
     if data is not None:
-        try:
-            # User inputs for budget, minimum size, and amenities
-            budget = int(input("Enter your budget (e.g., 400000): "))
-            min_size = input(
-                "Enter minimum property size in sqm (optional, press enter to skip): "
-            )
-            min_size = int(min_size) if min_size.isdigit() else None
-            amenities_input = input(
-                "Enter required amenities separated by comma (optional, press enter to skip): "
-            )
-            amenities = (
-                [amenity.strip() for amenity in amenities_input.split(",")]
-                if amenities_input
-                else []
-            )
+        while True:  # Start of the loop
+            try:
+                user_input = input(
+                    "Enter your budget (e.g., 400000) or type 'exit' to quit: "
+                )
+                if user_input.lower() == "exit":
+                    print("Exiting program.")
+                    break  # Exit the loop and program
 
-            # Filtering properties based on user inputs
-            filtered_properties = filter_properties(
-                data, budget, min_size=min_size, amenities=amenities
-            )
-            # Formatting the filtered properties for presentation
-            response = format_response(
-                filtered_properties.head(3)
-            )  # Limiting to top 3 properties for brevity
+                budget = int(user_input)
 
-            # Pass the formatted response to the assistant
-            print(
-                "Running assistant with shortlisted properties... Please wait for the response."
-            )
-            thread_id, run_id = run_assistant(client, assistant.id, response)
-            run_status = wait_for_run_completion(client, thread_id, run_id)
+                min_size = input(
+                    "Enter minimum property size in sqm (optional, press enter to skip): "
+                )
+                min_size = int(min_size) if min_size.isdigit() else None
 
-            if run_status.status == "completed":
-                print_messages(client, thread_id)
-            else:
-                print("Assistant run failed.")
-        except ValueError:
-            print("Please enter valid numerical values.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
+                amenities_input = input(
+                    "Enter required amenities separated by comma (optional, press enter to skip): "
+                )
+                amenities = (
+                    [amenity.strip() for amenity in amenities_input.split(",")]
+                    if amenities_input
+                    else []
+                )
+
+                # Filtering properties based on user inputs
+                filtered_properties = filter_properties(
+                    data, budget, min_size=min_size, amenities=amenities
+                )
+                # Formatting the filtered properties for presentation
+                response = format_response(
+                    filtered_properties.head(3)
+                )  # Limit to top 3 properties for brevity
+
+                print(
+                    "Running assistant with shortlisted properties... Please wait for the response."
+                )
+                thread_id, run_id = run_assistant(client, assistant.id, response)
+                run_status = wait_for_run_completion(client, thread_id, run_id)
+
+                if run_status.status == "completed":
+                    print_messages(client, thread_id)
+                else:
+                    print("Assistant run failed.")
+            except ValueError:
+                print("Please enter valid numerical values.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
     else:
         print("Exiting due to data loading error.")
 
