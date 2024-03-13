@@ -2,6 +2,7 @@ from openai import OpenAI
 import time
 from dotenv import load_dotenv
 import json
+import pandas as pd
 
 
 # Initializes the OpenAI client using the API key from the .env file.
@@ -12,60 +13,28 @@ def initialize_openai_client():
     return client
 
 
-def read_json_file():
-    with open("DBTest-AssistantAI.json", "r", encoding="utf-8") as json_file:
-        data = json.load(json_file)
-    return data
-
-
 # Creates an assistant with the specified file_id and returns the assistant object.
-def create_assistant(client, file_id):
+def create_assistant(client):
     assistant = client.beta.assistants.create(
         name="Ottavio",
-        instructions=f"""En tant qu'agent immobilier virtuel, votre mission est d'accompagner nos clients dans leur recherche de bien immobilier à acheter. Lorsqu'un client partage avec vous un emplacement préféré et un budget, vous plongez dans le dossier fourni pour trouver une sélection de biens qui répondent le mieux à ses attentes. Accédez à la liste des propriétés à partir du fichier fourni. Voici comment procéder :
+        instructions=f"""
+        As a virtual real estate agent, your primary goal is to assist our clients in finding 
+        real estate to purchase that aligns with their preferences. When a client specifies 
+        their desired location and budget, your task is to:
 
-Comprendre la demande : Prendre en compte le budget indiqué par le client et se concentrer sur les biens dont les prix se situent strictement dans cette fourchette budgétaire jusqu'à 20% au-dessus, afin de proposer des options variées et réalistes.
-
-Sélection des biens : S'assurer que chaque bien proposé répond aux critères de recherche du client, notamment en termes de localisation et de budget.
-
-Présentation des options : Pour chaque propriété sélectionnée, fournissez une liste comprenant les informations suivantes :
-
-ajouter un titre
-Prix ​​de vente
-Superficie en m²
-Un bref résumé des principales caractéristiques et atouts du bien
-Lien vers l'annonce complète sur le Web
-Exemple de format de réponse : Pour une demande précise, comme par exemple un appartement à Cannes avec un budget de 300 000 €, veillez à présenter plusieurs options répondant à ces critères, en veillant à varier les choix proposés en termes de caractéristiques et de prix, sans dépasser la limite. de 20% au-dessus du budget.
-
-Exemple de demande client :
-"Je recherche un appartement à Cannes avec un budget de 300 000 €."
-
-Exemple de réponse optimisée :
-
-Appartement 3 pièces à vendre - 330 000 € - 62 m² : Situé au centre ville de Cannes, cet appartement offre 2 chambres, un spacieux séjour, une salle de bain moderne avec douche à l'italienne, jardin commun, possibilité de location cave et parking. Idéal pour une famille, proche des transports et des écoles.
-URL : ajoutez l'URL ici
-
-Vente appartement 4 pièces - 349 800 € - 82 m² : Dans le quartier de la Croix des Gardes, découvrez cet appartement de 4 chambres, situé au dernier étage, offrant une terrasse avec vue mer et verdure. A proximité des commerces, écoles et plages. Parking et cave inclus.
-URL : ajoutez l'URL ici
-
-Vente appartement 3 pièces - 315 000 € - 69 m² : Profitez de la vue mer depuis cet appartement en dernier étage, avec ascenseur. Composé de 2 chambres, un salon, une salle à manger, cuisine indépendante, terrasse et balcon. Garage et cave inclus.
-URL : ajoutez l'URL ici
-
-Cette version améliorée met l'accent sur la clarté des instructions et la structure de la réponse, tout en garantissant une réponse précise à la demande du client.
-Vous pouvez trouver la liste des propriétés en suivant les commandes :read_json_file(file_path)
-    """,
-        tools=[{"type": "retrieval"}, {"type": "code_interpreter"}],
-        model="gpt-4-1106-preview",
-        file_ids=[file_id],
+        **Format Response**: Once you have the filtered list of properties, utilize the 
+        `format_response(properties)` function to organize the information into a 
+        client-friendly format. This will include details such as the property's location, 
+        price, and key features.
+        
+        you have all the shortlisted properties here: 
+        format_response(properties)
+        
+""",
+        tools=[{"type": "code_interpreter"}],
+        model="gpt-4",
     )
     return assistant
-
-
-# Uploads a file to OpenAI and returns the file_id.
-def upload_file(client, file_path):
-    with open(file_path, "rb") as json_file:
-        file_response = client.files.create(file=json_file, purpose="assistants")
-    return file_response.id
 
 
 # Runs the assistant and returns the thread_id and run_id
@@ -106,29 +75,118 @@ def print_messages(client, thread_id):
                 print(f"\n{role}: {content.text.value}")
 
 
-# main function to excute all the functions above and run the assistant
+def load_data(filepath):
+    # Load the dataset from an Excel file
+    try:
+        data = pd.read_excel(filepath)
+
+        # Ensure 'Prix' and 'Essentiels' are numeric. Adjust these column names if needed.
+        data["Prix"] = pd.to_numeric(
+            data["Prix"], errors="coerce"
+        )  # Convert to numeric, make non-numeric as NaN
+        data["Essentiels"] = pd.to_numeric(data["Essentiels"], errors="coerce")
+
+        return data
+    except Exception as e:
+        print(f"Failed to load data: {e}")
+        return None
+
+
+def filter_properties(
+    data, budget, property_type="Appartement", min_size=None, amenities=[]
+):
+    # Filter properties based on the specified criteria including budget range, property type, size, and amenities.
+    max_price = budget * 1.2
+    # Filter by type and price range
+    filtered = data[
+        (data["Type de bien"] == property_type)
+        & (data["Prix"] >= budget)
+        & (data["Prix"] <= max_price)
+    ]
+
+    # Filter by size if specified
+    if min_size is not None:
+        filtered = filtered[
+            filtered.get("Essentiels", pd.Series(index=filtered.index, dtype=float))
+            >= min_size
+        ]
+
+    # Filter by amenities if any specified
+    if amenities:
+        for amenity in amenities:
+            if amenity in filtered.columns:
+                filtered = filtered[filtered[amenity] == True]
+            else:
+                print(f"Warning: Amenity '{amenity}' not found in dataset.")
+
+    return filtered
+
+
+def format_response(properties):
+    # Format the filtered properties into a readable string.
+    if properties.empty:
+        return "No properties found within the specified criteria."
+
+    response = "Shortlisted Properties:\n"
+    for i, property in properties.iterrows():
+        response += f"{i+1}. {property['Titre annonce']} - {property['Prix']} € - URL: {property['URL']}\n"
+        if "Essentiels" in properties.columns:
+            response += f" - Essentiels: {property.get('Essentiels', 'N/A')} sqm"
+        response += "\n"
+    return response
+
+
 def main():
     print("Initializing OpenAI client...")
     client = initialize_openai_client()
-    print("Uploading file to OpenAI...")
-    file_id = upload_file(client, "DBTest-AssistantAI.json")
     print("Creating assistant...")
-    assistant = create_assistant(client, file_id)
+    # fileId = upload_file(client, "Flat range search.xlsx")
+    assistant = create_assistant(client)
+    filepath = "Flat range search.xlsx"  # Path to the dataset/File
+    data = load_data(filepath)
+    if data is not None:
+        try:
+            # User inputs for budget, minimum size, and amenities
+            budget = int(input("Enter your budget (e.g., 400000): "))
+            min_size = input(
+                "Enter minimum property size in sqm (optional, press enter to skip): "
+            )
+            min_size = int(min_size) if min_size.isdigit() else None
+            amenities_input = input(
+                "Enter required amenities separated by comma (optional, press enter to skip): "
+            )
+            amenities = (
+                [amenity.strip() for amenity in amenities_input.split(",")]
+                if amenities_input
+                else []
+            )
 
-    while True:
-        user_input = input("Enter your query (type 'exit' to end): ")
-        if user_input.lower() == "exit":
-            print("Exiting the assistant. Goodbye!")
-            break
+            # Filtering properties based on user inputs
+            filtered_properties = filter_properties(
+                data, budget, min_size=min_size, amenities=amenities
+            )
+            # Formatting the filtered properties for presentation
+            response = format_response(
+                filtered_properties.head(3)
+            )  # Limiting to top 3 properties for brevity
 
-        print("Running assistant... Please wait for the response.")
-        thread_id, run_id = run_assistant(client, assistant.id, user_input)
-        run_status = wait_for_run_completion(client, thread_id, run_id)
-        if run_status.status == "completed":
-            print("Assistant response received:")
-            print_messages(client, thread_id)
-        else:
-            print("Run failed:", run_status.last_error)
+            # Pass the formatted response to the assistant
+            print(
+                "Running assistant with shortlisted properties... Please wait for the response."
+            )
+            thread_id, run_id = run_assistant(client, assistant.id, response)
+            run_status = wait_for_run_completion(client, thread_id, run_id)
+
+            if run_status.status == "completed":
+                print_messages(client, thread_id)
+            else:
+                print("Assistant run failed.")
+        except ValueError:
+            print("Please enter valid numerical values.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    else:
+        print("Exiting due to data loading error.")
 
 
 if __name__ == "__main__":

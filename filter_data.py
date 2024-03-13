@@ -4,7 +4,15 @@ import pandas as pd
 def load_data(filepath):
     # Load the dataset from an Excel file
     try:
-        return pd.read_excel(filepath)
+        data = pd.read_excel(filepath)
+
+        # Ensure 'Prix' and 'Essentiels' are numeric. Adjust these column names if needed.
+        data["Prix"] = pd.to_numeric(
+            data["Prix"], errors="coerce"
+        )  # Convert to numeric, make non-numeric as NaN
+        data["Essentiels"] = pd.to_numeric(data["Essentiels"], errors="coerce")
+
+        return data
     except Exception as e:
         print(f"Failed to load data: {e}")
         return None
