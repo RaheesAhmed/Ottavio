@@ -9,3 +9,4 @@ prompt.py
 /persist
 test.py
 Flat range search.xlsx
+__pycache__
