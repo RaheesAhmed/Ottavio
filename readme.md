@@ -46,6 +46,14 @@ venv/scripts/Activate
 pip install -r requirments.txt
 ```
 
+```
+pip install -U langchain-openai
+```
+
+```
+pip install -U langchain-community
+```
+
 Create a .env file in the root directory of your project and add your OpenAI API key:
 
 ```
@@ -87,3 +95,31 @@ python filter_data.py
 ```
 
 Enter the price range
+
+# RUN THE NEW EMBEDDING MODEL
+
+```
+pip install -U langchain-openai
+```
+
+```
+pip install -U langchain-community
+```
+
+```
+pip install -r requirments.txt
+```
+
+First Run the `create_database.py` to create the vector store
+
+```
+python create_database.py
+```
+
+Now Run the query_data to get the responde from vector store
+
+```
+python query_data.py
+```
+
+Now Enter your Requirments Like Bugdet LOcation etc.

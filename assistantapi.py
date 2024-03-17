@@ -13,8 +13,30 @@ def initialize_openai_client():
     return client
 
 
+def call_function(json_input):
+    print(f"Calling function with input: {json_input}")
+    function_name = json_input["function"]
+    args = json_input["args"]
+
+    # Map of function names to function objects
+    functions = {
+        "load_data": load_data,
+        "filter_properties": filter_properties,
+        "format_response": format_response,
+    }
+
+    # Call the appropriate function with unpacked arguments
+    if function_name in functions:
+        result = functions[function_name](**args)
+        print(f"Function {function_name} called successfully.")
+        return result
+    else:
+        raise ValueError("Function not recognized")
+
+
 # Creates an assistant with the specified file_id and returns the assistant object.
 def create_assistant(client):
+    print("Creating assistant...")
     assistant = client.beta.assistants.create(
         name="Ottavio",
         instructions=f"""
@@ -23,29 +45,89 @@ def create_assistant(client):
         their desired location and budget, your task is to:
 
         **Format Response**: Once you have the filtered list of properties, utilize the 
-        `format_response(properties)` function to organize the information into a 
-        client-friendly format. This will include details such as the property's location, 
+        `format_response(properties)` function to organize the information.This will 
+        include details such as the property's location, 
         price, and key features.
         
-        you have all the shortlisted properties here: 
-        format_response(properties)
+        
+        **Response**: Provide the client with a list of properties that meet their criteria in a beautiful and readable format.i.e.
+        Shortlisted Properties:
+        1. Property 1 - $100,000 - URL: [link]
+        2. Property 2 - $200,000 - URL: [link]
+        3. Property 3 - $300,000 - URL: [link]
+        4. Property 4 - $400,000 - URL: [link]
+        5. Property 5 - $500,000 - URL: [link]
+        
+        **Filter Properties**: Utilize the `filter_properties(data, budget, property_type, min_size, amenities)` function to filter the real estate properties based on the specified criteria. The function takes in the following parameters:
+        - `data`: The dataset containing the real estate properties.
+        - `budget`: The budget of the client.
+        - `property_type`: The type of property to filter for.
+        
+        - `min_size`: The minimum size of the property in square meters.
+        
+        - `amenities`: The amenities required by the client.
+        
+        The function returns a filtered list of properties that meet the specified criteria.
+        
+        
+        
+       
         
 """,
-        tools=[{"type": "code_interpreter"}],
+        tools=[
+            {"type": "code_interpreter"},
+            {
+                "type": "function",
+                "function": {
+                    "name": "filter_properties",
+                    "description": "Filters real estate properties based on the specified criteria.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "data": {
+                                "type": "object",
+                                "description": "The dataset containing the real estate properties.",
+                            },
+                            "budget": {
+                                "type": "number",
+                                "description": "The budget of the client.",
+                            },
+                            "property_type": {
+                                "type": "string",
+                                "description": "The type of property to filter for.",
+                            },
+                            "min_size": {
+                                "type": "number",
+                                "description": "The minimum size of the property in square meters.",
+                            },
+                            "amenities": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "The amenities required by the client.",
+                            },
+                        },
+                        "required": ["data", "budget"],
+                    },
+                },
+            },
+        ],
         model="gpt-4",
     )
+    print("Assistant created.")
     return assistant
 
 
 # Runs the assistant and returns the thread_id and run_id
 def run_assistant(client, assistant_id, user_input):
-
+    print("Running assistant...")
     thread = client.beta.threads.create()
+    print("Thread created.")
     message = client.beta.threads.messages.create(
         thread_id=thread.id,
         role="user",
         content=user_input,
     )
+    print("User message added to the thread.")
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
         assistant_id=assistant_id,
@@ -54,12 +136,16 @@ def run_assistant(client, assistant_id, user_input):
 
 
 # Waits for the run to be completed and returns the run status.
-def wait_for_run_completion(client, thread_id, run_id):
+def wait_for_run_completion(client, thread_id, run_id, data):
+    print("Waiting for run to complete...")
     while True:
         run_status = client.beta.threads.runs.retrieve(
             thread_id=thread_id, run_id=run_id
         )
-        if run_status.status in ["completed", "failed"]:
+        print(f"Run status: {run_status.status}")
+        if run_status.status == "requires_action":
+            handle_requires_action(client, thread_id, run_id, run_status, data)
+        elif run_status.status in ["completed", "failed"]:
             return run_status
         time.sleep(2)
 
@@ -72,13 +158,31 @@ def print_messages(client, thread_id):
         role = message.role
         for content in message.content:
             if content.type == "text":
-                print(f"\n{role}: {content.text.value}")
+                print(f"\n{content.text.value}")
 
 
+# def load_data(filepath):
+#     # Load the dataset from an Excel file
+#     try:
+#         data = pd.read_json(filepath)
+
+#         # Ensure 'Prix' and 'Essentiels' are numeric. Adjust these column names if needed.
+#         data["Prix"] = pd.to_numeric(
+#             data["Prix"], errors="coerce"
+#         )  # Convert to numeric, make non-numeric as NaN
+#         data["Essentiels"] = pd.to_numeric(data["Essentiels"], errors="coerce")
+
+#         return data
+#     except Exception as e:
+#         print(f"Failed to load data: {e}")
+#         return None
+
+
+# Load the dataset from an json file
 def load_data(filepath):
     # Load the dataset from an Excel file
     try:
-        data = pd.read_excel(filepath)
+        data = pd.read_json(filepath)
 
         # Ensure 'Prix' and 'Essentiels' are numeric. Adjust these column names if needed.
         data["Prix"] = pd.to_numeric(
@@ -136,64 +240,100 @@ def format_response(properties):
     return response
 
 
+def handle_requires_action(client, thread_id, run_id, run_status, data):
+    tool_outputs = []
+    for tool_call in run_status.required_action.submit_tool_outputs.tool_calls:
+        function_name = tool_call.function.name
+
+        if function_name == "filter_properties":
+            # For filter_properties, ensure 'data' is passed along with other arguments
+            arguments = {"data": data}
+            arguments["budget"] = arguments.get(
+                "budget"
+            )  # Assuming 'data' is your loaded dataset
+        else:
+            arguments = json.loads(tool_call.function.arguments)
+
+        output = call_function({"function": function_name, "args": arguments})
+
+        tool_outputs.append(
+            {
+                "tool_call_id": tool_call.id,
+                "output": json.dumps(output),
+            }
+        )
+
+    # Submit the tool outputs to continue the run
+    client.beta.threads.runs.submit_tool_outputs(
+        thread_id=thread_id, run_id=run_id, tool_outputs=tool_outputs
+    )
+
+
 def main():
-    print("Initializing OpenAI client...")
     client = initialize_openai_client()
-    print("Creating assistant...")
     assistant = create_assistant(client)
-    filepath = "Flat range search.xlsx"  # Path to the dataset/File
+    filepath = "DBTest-AssistantAI.json"  # Adjust the file path as needed
     data = load_data(filepath)
 
     if data is not None:
         while True:  # Start of the loop
             try:
-                user_input = input(
-                    "Enter your budget (e.g., 400000) or type 'exit' to quit: "
+                print(
+                    "Enter the details for the apartment you're looking for or type 'exit' to quit:"
                 )
-                if user_input.lower() == "exit":
-                    print("Exiting program.")
+                try:
+                    user_input_budget = input("Budget: ")
+                    if user_input_budget.lower() == "exit":
+                        print("Exiting program.")
+                        break
+                    budget = int(user_input_budget)
+
+                except ValueError:
+                    print("Invalid budget entered. Please enter a numeric value.")
+                    continue
+
+                user_input_location = input("Location (e.g., Cannes): ")
+                if user_input_location.lower() == "exit":
                     break  # Exit the loop and program
 
-                budget = int(user_input)
-
-                min_size = input(
-                    "Enter minimum property size in sqm (optional, press enter to skip): "
+                user_input_size = input(
+                    "Minimum size in square meters (press enter to skip): "
                 )
-                min_size = int(min_size) if min_size.isdigit() else None
-
-                amenities_input = input(
-                    "Enter required amenities separated by comma (optional, press enter to skip): "
-                )
-                amenities = (
-                    [amenity.strip() for amenity in amenities_input.split(",")]
-                    if amenities_input
-                    else []
+                user_input_amenities = input(
+                    "Required amenities (comma-separated, press enter to skip): "
                 )
 
-                # Filtering properties based on user inputs
-                filtered_properties = filter_properties(
-                    data, budget, min_size=min_size, amenities=amenities
+                # Parsing and structuring user input
+                amenities_list = (
+                    user_input_amenities.split(",") if user_input_amenities else []
                 )
-                # Formatting the filtered properties for presentation
-                response = format_response(
-                    filtered_properties.head(3)
-                )  # Limit to top 3 properties for brevity
+                min_size = int(user_input_size) if user_input_size.isdigit() else None
+                budget = int(user_input_budget) if user_input_budget.isdigit() else None
 
-                print(
-                    "Running assistant with shortlisted properties... Please wait for the response."
-                )
-                thread_id, run_id = run_assistant(client, assistant.id, response)
-                run_status = wait_for_run_completion(client, thread_id, run_id)
+                if not budget:
+                    raise ValueError(
+                        "Please enter a valid numerical value for the budget."
+                    )
+
+                user_query = f"Looking for an apartment in {user_input_location} with a budget of {user_input_budget}"
+                if min_size:
+                    user_query += f", minimum size {min_size} square meters"
+                if amenities_list:
+                    user_query += f", amenities: {user_input_amenities}"
+
+                print("Processing... Please wait...")
+                thread_id, run_id = run_assistant(client, assistant.id, user_query)
+                run_status = wait_for_run_completion(client, thread_id, run_id, data)
+                print(f"Run status: {run_status.status}")
 
                 if run_status.status == "completed":
                     print_messages(client, thread_id)
                 else:
                     print("Assistant run failed.")
-            except ValueError:
-                print("Please enter valid numerical values.")
+            except ValueError as e:
+                print(e)
             except Exception as e:
                 print(f"An error occurred: {e}")
-
     else:
         print("Exiting due to data loading error.")
 

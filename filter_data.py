@@ -62,36 +62,36 @@ def format_response(properties):
     return response
 
 
-if __name__ == "__main__":
-    filepath = "Flat range search.xlsx"  # Path to the dataset/File
-    data = load_data(filepath)
+# if __name__ == "__main__":
+#     filepath = "Flat range search.xlsx"  # Path to the dataset/File
+#     data = load_data(filepath)
 
-    if data is not None:
-        try:
-            budget = int(input("Enter your budget (e.g., 400000): "))
-            min_size = input(
-                "Enter minimum property size in sqm (optional, press enter to skip): "
-            )
-            min_size = int(min_size) if min_size.isdigit() else None
-            amenities_input = input(
-                "Enter required amenities separated by comma (optional, press enter to skip): "
-            )
-            amenities = (
-                [amenity.strip() for amenity in amenities_input.split(",")]
-                if amenities_input
-                else []
-            )
+#     if data is not None:
+#         try:
+#             budget = int(input("Enter your budget (e.g., 400000): "))
+#             min_size = input(
+#                 "Enter minimum property size in sqm (optional, press enter to skip): "
+#             )
+#             min_size = int(min_size) if min_size.isdigit() else None
+#             amenities_input = input(
+#                 "Enter required amenities separated by comma (optional, press enter to skip): "
+#             )
+#             amenities = (
+#                 [amenity.strip() for amenity in amenities_input.split(",")]
+#                 if amenities_input
+#                 else []
+#             )
 
-            filtered_properties = filter_properties(
-                data, budget, min_size=min_size, amenities=amenities
-            )
-            response = format_response(
-                filtered_properties.head(3)
-            )  # Limit to top 3 properties
-            print(response)
-        except ValueError:
-            print("Please enter valid numerical values.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-    else:
-        print("Exiting due to data loading error.")
+#             filtered_properties = filter_properties(
+#                 data, budget, min_size=min_size, amenities=amenities
+#             )
+#             response = format_response(
+#                 filtered_properties.head(3)
+#             )  # Limit to top 3 properties
+#             print(response)
+#         except ValueError:
+#             print("Please enter valid numerical values.")
+#         except Exception as e:
+#             print(f"An error occurred: {e}")
+#     else:
+#         print("Exiting due to data loading error.")
