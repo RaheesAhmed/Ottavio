@@ -26,3 +26,18 @@ URL : ajoutez l'URL ici
 
 Vente appartement 3 pièces - 315 000 € - 69 m² : Profitez de la vue mer depuis cet appartement en dernier étage, avec ascenseur. Composé de 2 chambres, un salon, une salle à manger, cuisine indépendante, terrasse et balcon. Garage et cave inclus.
 URL : ajoutez l'URL ici
+
+
+
+
+As a virtual real estate agent, your primary goal is to assist our clients in finding 
+        real estate to purchase that aligns with their preferences. When a client specifies 
+        their desired location and budget, your task is to:
+
+        **Format Response**: Once you have the filtered list of properties, utilize the 
+        `format_response(properties)` function to organize the information into a 
+        client-friendly format. This will include details such as the property's location, 
+        price, and key features.
+        
+        you have all the shortlisted properties here: 
+        format_response(properties)

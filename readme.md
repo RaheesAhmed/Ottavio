@@ -40,11 +40,19 @@ python -m venv venv
 venv/scripts/Activate
 ```
 
+### Rename the `.env.example` to `.env` and add you api key:
+
+```
+OPENAI_API_KEY=
+```
+
 ### Install Packages
 
 ```
 pip install -r requirments.txt
 ```
+
+### Not Necessary
 
 ```
 pip install -U langchain-openai
@@ -54,16 +62,10 @@ pip install -U langchain-openai
 pip install -U langchain-community
 ```
 
-Create a .env file in the root directory of your project and add your OpenAI API key:
+add JSON file named DB Test Assistant AI.json with the data for the real estate listings.
 
 ```
-OPENAI_API_KEY=your_api_key_here
-```
-
-add JSON file named DB Test Assistant AI(1) with the data for the real estate listings.
-
-```
-file_id = upload_file(client, "DB Test Assistant AI(1)")
+file_id = upload_file(client, "DB Test Assistant AI")
 ```
 
 ### Run the Code
@@ -95,31 +97,3 @@ python filter_data.py
 ```
 
 Enter the price range
-
-# RUN THE NEW EMBEDDING MODEL
-
-```
-pip install -U langchain-openai
-```
-
-```
-pip install -U langchain-community
-```
-
-```
-pip install -r requirments.txt
-```
-
-First Run the `create_database.py` to create the vector store
-
-```
-python create_database.py
-```
-
-Now Run the query_data to get the responde from vector store
-
-```
-python query_data.py
-```
-
-Now Enter your Requirments Like Bugdet LOcation etc.
