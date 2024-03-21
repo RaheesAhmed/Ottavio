@@ -62,15 +62,10 @@ pip install -U langchain-openai
 pip install -U langchain-community
 ```
 
-add JSON file named DB Test Assistant AI.json with the data for the real estate listings.
-
-```
-file_id = upload_file(client, "DB Test Assistant AI")
-```
 
 ### Run the Code
 
-To Run Assistant API Type
+To Run Assistant 
 
 ```
 python assistantapi.py
